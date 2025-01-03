@@ -1,0 +1,32 @@
+{
+  "name": "@nchatz999/eldora",
+  "fmt": {
+    "files": {
+      "include": ["src/"]
+    },
+    "options": {
+      "useTabs": false,
+      "lineWidth": 80,
+      "indentWidth": 4,
+      "singleQuote": true
+    }
+  },
+  "version": "0.1.25",
+  "license": "MIT",
+  "exports": {
+    ".": "./mod.ts",
+    "./jsx-runtime": "./src/jsx-runtime.ts"
+  },
+  "lint": {
+    "files": {
+      "include": ["src/"]
+    },
+    "rules": {
+      "tags": ["recommended"]
+    }
+  },
+  "compilerOptions": {
+    "lib": ["dom", "deno.ns"],
+    "strict": true
+  }
+}
