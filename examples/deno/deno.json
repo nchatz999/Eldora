@@ -30,6 +30,6 @@
     "strict": true
   },
   "imports": {
-    "@nchatz999/eldora": "jsr:@nchatz999/eldora@^0.1.25"
+    "@nchatz999/eldora": "jsr:@nchatz999/eldora@^0.1.26"
   }
 }

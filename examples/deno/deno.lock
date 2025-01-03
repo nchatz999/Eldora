@@ -3,6 +3,7 @@
   "specifiers": {
     "jsr:@luca/esbuild-deno-loader@~0.11.1": "0.11.1",
     "jsr:@nchatz999/eldora@~0.1.23": "0.1.23",
+    "jsr:@nchatz999/eldora@~0.1.25": "0.1.25",
     "jsr:@std/bytes@^1.0.2": "1.0.4",
     "jsr:@std/encoding@^1.0.5": "1.0.6",
     "jsr:@std/path@^1.0.6": "1.0.8"
@@ -18,6 +19,9 @@
     },
     "@nchatz999/eldora@0.1.23": {
       "integrity": "a720048fc2ead6bfbbe68fcdfea3b6aebd725ffc303fa126b4cddb284aaa3fef"
+    },
+    "@nchatz999/eldora@0.1.25": {
+      "integrity": "8151a35147eaece24d82351b0b766c224b6f20a98a73b68b5363f2fbd6f1b0d7"
     },
     "@std/bytes@1.0.4": {
       "integrity": "11a0debe522707c95c7b7ef89b478c13fb1583a7cfb9a85674cd2cc2e3a28abc"

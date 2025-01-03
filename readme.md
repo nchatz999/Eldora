@@ -1,8 +1,7 @@
 # Eldora Framework 🌟
 
 Eldora is a modern TypeScript framework that combines the elegance of TSX syntax
-with the robust architecture of Elm. It brings predictable state management,
-pure functions, and type safety to the frontend development ecosystem.
+with the robust architecture of Elm.
 
 > 📚 **Educational Notice** This project is primarily created for educational
 > purposes, aiming to understand how modern frontend frameworks operate under
@@ -23,3 +22,4 @@ Eldora combines the best of both worlds:
 - TSX's declarative UI composition
 - Elm's functional architecture
 - TypeScript's strong type system
+- Few optimizations

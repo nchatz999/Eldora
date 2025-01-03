@@ -159,9 +159,6 @@ function parseJSXToEldoraNode(
   throw new Error('Invalid JSX node');
 }
 
-/**
- * Updates the real DOM to match the virtual DOM efficiently
- */
 export function diff(
   oldVNode: VNode,
   newVNode: VNode,
@@ -223,7 +220,7 @@ function diffFunction(
 }
 
 /**
- * Efficiently diffs and updates children arrays
+ * Diffs and updates children arrays
  */
 function diffChildren(
   oldChildren: VNode[],
@@ -290,7 +287,7 @@ function diffChildren(
 }
 
 /**
- * Diffs element preps
+ * Diffs element props
  */
 function diffProps(
   oldNode: VElement,
