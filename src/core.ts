@@ -17,7 +17,7 @@ export type VElement = {
   props: Record<string, any>;
   children: VNode[];
   controller: AbortController;
-  domElement: HTMLElement | undefined;
+  key: string | undefined;
 };
 
 /**
@@ -29,6 +29,7 @@ export type VFunction = {
   value: FunctionComponent;
   props: Record<string, any>;
   topNode: VElement | undefined;
+  key: string | undefined;
 };
 
 /**
@@ -38,7 +39,7 @@ export type VFunction = {
 export type VPrimitive = {
   type: 'primitive';
   value: number | string;
-  domElement: Text | undefined;
+  key: string | undefined;
 };
 
 /**
@@ -67,6 +68,7 @@ export class App<M, Msg> {
   private update: (model: M, msg: Msg) => M;
   private container: HTMLElement;
   private previous: VNode | undefined;
+  private previousElement: HTMLElement | undefined;
   private focusedElementId: string | null;
 
   /**
@@ -115,16 +117,18 @@ export class App<M, Msg> {
    * @private
    */
   private renderView(): void {
-    const node = this.view(this.model);
+    const currentNode = this.view(this.model);
 
-    if (!this.previous) {
-      this.previous = node;
-      this.container.replaceChildren(render(this.previous));
-    } else {
-      diff(this.previous, node);
+    if (!this.previous || !this.previousElement) {
+      this.previous = currentNode;
+      this.previousElement = render(this.previous) as HTMLElement;
+      this.container.replaceChildren(this.previousElement);
+      return;
     }
 
-    if (this.focusedElementId !== null) {
+    diff(this.previous, currentNode, this.previousElement);
+
+    if (this.focusedElementId) {
       const element = document.getElementById(this.focusedElementId);
       if (element) {
         element.focus();

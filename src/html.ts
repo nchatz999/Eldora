@@ -180,7 +180,9 @@ interface AriaAttributes {
  * @template T - HTML element type
  */
 export type HTMLAttributes<T> =
-  & { children?: (VNode | string | number)[] | (VNode | string | number) }
+  & {
+    children?: (VNode | string | number)[] | (VNode | string | number);
+  }
   & CommonHTMLAttributes
   & HTMLEventHandlers
   & Partial<FormAttributes>

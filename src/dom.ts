@@ -26,44 +26,43 @@ export function render(
   switch (node.type) {
     case ('primitive'): {
       const element = document.createTextNode(String(node.value));
-      node.domElement = element;
+
       return element;
     }
     case ('html'): {
       const element = document.createElement(node.value);
 
-      node.domElement = element;
       const signal = node.controller.signal;
       Object.entries(node.props).forEach(([key, value]) => {
         switch (key) {
           case 'style': {
-            Object.assign(node.domElement!.style, value);
+            Object.assign(element.style, value);
             break;
           }
           case 'className': {
-            node.domElement!.setAttribute('class', value);
+            element.setAttribute('class', value);
             break;
           }
           case 'value': {
-            (node.domElement! as HTMLInputElement).value = value;
+            (element as HTMLInputElement).value = value;
             break;
           }
           case 'checked': {
-            (node.domElement! as HTMLInputElement).checked = value;
+            (element as HTMLInputElement).checked = value;
             break;
           }
           default: {
             if (key.startsWith('on')) {
               const eventName = key.slice(2).toLowerCase();
-              node.domElement!.addEventListener(eventName, value, { signal });
+              element.addEventListener(eventName, value, { signal });
               break;
             }
-            node.domElement!.setAttribute(key, String(value));
+            element.setAttribute(key, String(value));
           }
         }
       });
       node.children.forEach((child) => {
-        node.domElement?.appendChild(render(child));
+        element.appendChild(render(child));
       });
       return element;
     }
@@ -81,12 +80,12 @@ export function render(
  * @returns Normalized array of VNode children
  * @private
  */
-const normalizeChildren = (
+export function normalizeChildren(
   children:
     | (VNode | string | number)[]
     | (VNode | string | number)
     | undefined,
-): (VNode)[] => {
+): (VNode)[] {
   if (!children) {
     return [];
   }
@@ -99,11 +98,12 @@ const normalizeChildren = (
         type: 'primitive',
         value: child,
         domElement: undefined,
+        key: undefined,
       };
     }
     return child;
   });
-};
+}
 
 /**
  * Creates a virtual DOM node (JSX element)
@@ -119,8 +119,9 @@ const normalizeChildren = (
 export function eldoraJSX(
   type: string | FunctionComponent,
   props: HTMLAttributes<HTMLElement> = {},
+  key?: string,
 ): VNode {
-  return parseJSXToEldoraNode(type, props);
+  return parseJSXToEldoraNode(type, props, key);
 }
 
 /**
@@ -133,6 +134,7 @@ export function eldoraJSX(
 function parseJSXToEldoraNode(
   type: string | FunctionComponent,
   props: HTMLAttributes<HTMLElement> = {},
+  key?: string,
 ): VNode {
   if (typeof type === 'function') {
     return {
@@ -140,6 +142,7 @@ function parseJSXToEldoraNode(
       value: type,
       props,
       topNode: undefined,
+      key,
     };
   }
 
@@ -152,89 +155,147 @@ function parseJSXToEldoraNode(
       children,
       props,
       controller: new AbortController(),
-      domElement: undefined,
+      key,
     };
   }
 
   throw new Error('Invalid JSX node');
 }
 
+/**
+ * Core diffing function that handles all types of virtual nodes in the virtual DOM.
+ *
+ * @param oldVNode - The previous virtual node
+ * @param newVNode - The new virtual node to compare against
+ * @param element - The DOM element or text node to update
+ *
+ * Handles three node types:
+ * - primitive: Text nodes (strings, numbers, booleans)
+ * - html: Standard HTML elements
+ * - function: Component nodes
+ */
 export function diff(
   oldVNode: VNode,
   newVNode: VNode,
+  element: HTMLElement | Text,
 ): void {
   switch (newVNode.type) {
     case 'primitive':
-      diffPrimitive(oldVNode as VPrimitive, newVNode);
+      diffPrimitive(oldVNode as VPrimitive, newVNode, element as Text);
       break;
     case 'html':
-      diffElement(oldVNode as VElement, newVNode as VElement);
+      diffElement(
+        oldVNode as VElement,
+        newVNode as VElement,
+        element as HTMLElement,
+      );
       break;
     case 'function':
-      diffFunction(oldVNode as VFunction, newVNode as VFunction);
+      diffFunction(
+        oldVNode as VFunction,
+        newVNode as VFunction,
+        element as HTMLElement,
+      );
       break;
   }
 }
 
 /**
- * Diffs primitive nodes (text)
+ * Updates a text node when its primitive value has changed.
+ *
+ * @param oldNode - The previous primitive node (containing string, number, or boolean)
+ * @param newNode - The new primitive node to compare against
+ * @param element - The Text node to update
+ *
+ * Behavior:
+ * - Only updates if values are different
+ * - Updates both virtual node and DOM text content
+ * - Converts value to string for DOM update
  */
 function diffPrimitive(
   oldNode: VPrimitive,
   newNode: VPrimitive,
+  element: Text,
 ): void {
   if (oldNode.value !== newNode.value) {
     oldNode.value = newNode.value;
-    oldNode.domElement!.nodeValue = String(newNode.value);
+    element.nodeValue = String(newNode.value);
   }
 }
 
 /**
- * Diffs element nodes
+ * Diffs and updates an element node and its descendants in the virtual DOM.
+ *
+ * @param oldNode - The previous element node
+ * @param newNode - The new element node to compare against
+ * @param element - The DOM element to update
+ *
+ * Operations:
+ * 1. Updates element properties and attributes
+ * 2. Recursively updates child elements
  */
 function diffElement(
   oldNode: VElement,
   newNode: VElement,
+  element: HTMLElement,
 ): void {
-  diffProps(oldNode, newNode);
-
-  diffChildren(oldNode.children, newNode.children, oldNode.domElement!);
+  diffProps(oldNode, newNode, element);
+  diffChildren(oldNode.children, newNode.children, element);
 }
 
 /**
- * Diffs function components
+ * Diffs and updates function components in the virtual DOM.
+ *
+ * @param oldNode - The previous function component node
+ * @param newNode - The new function component node to compare against
+ * @param element - The DOM element to update
+ *
+ * Behavior:
+ * - For lazy components: Only updates if props have changed
+ * - For regular components: Always re-renders
+ * - Recursively diffs the resulting virtual nodes
  */
 function diffFunction(
   oldNode: VFunction,
   newNode: VFunction,
+  element: HTMLElement,
 ): void {
   if (oldNode.props.lazy) {
-    if (JSON.stringify(oldNode.props) === JSON.stringify(newNode.props)) {
+    if (JSON.stringify(oldNode.props) === JSON.stringify(newNode.props)) { // TODO: more perfomant comparison
       return;
     }
   }
   const newTopNode = newNode.value(newNode.props);
   const oldTopNode = oldNode.topNode as VElement;
   oldNode.props = newNode.props;
-  diff(oldTopNode, newTopNode);
+  diff(oldTopNode, newTopNode, element);
 }
 
 /**
- * Diffs and updates children arrays
+ * Implements a diffing algorithm that handles element creation, deletion, updates, and reordering.
+ *
+ * @param oldChildren - Array of existing virtual DOM nodes that are currently rendered
+ * @param newChildren - Array of new virtual DOM nodes that need to be rendered
+ * @param parentDOM - The parent DOM element containing the children to be diffed
+ *
+ * Key features:
+ * - Handles empty states (no old or new children)
+ * - Supports keyed elements
+ * - Maintains element order and hierarchy
+ *
+ * Algorithm steps:
+ * 1. Handle empty cases (new children or removed children)
+ * 2. Create key maps for tracking element positions
+ * 3. Remove old children that don't exist in new set
+ * 4. Process differences (updates, additions, removals)
+ * 5. Clean up any remaining removed children
  */
 function diffChildren(
   oldChildren: VNode[],
   newChildren: VNode[],
   parentDOM: HTMLElement,
 ): void {
-  const oldLength = oldChildren.length;
-  const newLength = newChildren.length;
-  let removedCount = 0;
-
-  const maxLength = Math.max(oldLength, newLength);
-
-  if (maxLength === 0) return;
-  if (oldLength === 0) {
+  if (oldChildren.length === 0) {
     newChildren.forEach((child) => {
       const newNode = render(child);
       oldChildren.push(child);
@@ -242,69 +303,130 @@ function diffChildren(
     });
     return;
   }
-  if (newLength === 0) {
-    oldChildren.forEach((child) => {
-      removeVNode(child);
-    });
+
+  if (newChildren.length === 0) {
+    parentDOM.textContent = '';
     oldChildren.length = 0;
     return;
   }
-  for (let i = 0; i < maxLength; i++) {
-    const oldChild = oldChildren[i];
+
+  const oldKeyMap = new Map<string, number>();
+  const newKeyMap = new Map<string, number>();
+  oldChildren.forEach((child, i) => child.key && oldKeyMap.set(child.key, i));
+  newChildren.forEach((child, i) => child.key && newKeyMap.set(child.key, i));
+
+  for (let i = 0; i < oldChildren.length;) {
+    const child = oldChildren[i];
+    if (child.key) {
+      if (!newKeyMap.has(child.key)) {
+        parentDOM.removeChild(parentDOM.childNodes[i]);
+        oldChildren.splice(i, 1);
+        continue;
+      }
+      oldKeyMap.set(child.key, i);
+    }
+    i++;
+  }
+
+  let removedCount = 0;
+
+  for (let i = 0; i < Math.max(oldChildren.length, newChildren.length); i++) {
     const newChild = newChildren[i];
+    const oldChild = oldChildren[i];
 
     if (!newChild) {
-      removeVNode(oldChild);
-      removedCount++;
+      removedCount += 1;
       continue;
     }
 
     if (!oldChild) {
-      const newNode = render(newChild);
-      parentDOM.appendChild(newNode);
-      oldChildren[i] = newChild;
+      const newElement = render(newChild);
+      parentDOM.appendChild(newElement);
+      oldChildren.push(newChild);
       continue;
     }
 
-    if (oldChild === newChild) continue;
+    if (newChild.key && oldKeyMap.has(newChild.key)) {
+      const oldKeyedItem = oldKeyMap.get(newChild.key)!;
+      if (oldKeyedItem !== i) {
+        if (oldChild.key) {
+          oldKeyMap.set(oldChild.key, oldKeyedItem);
+        }
+        domChildSwap(parentDOM, i, oldKeyedItem);
 
+        [oldChildren[i], oldChildren[oldKeyedItem]] = [
+          oldChildren[oldKeyedItem],
+          oldChildren[i],
+        ];
+
+        diff(
+          oldChildren[i],
+          newChildren[i],
+          parentDOM.childNodes[i] as HTMLElement | Text,
+        );
+        continue;
+      }
+    }
     const needsReplacement = oldChild.type !== newChild.type ||
       (oldChild.type === 'html' && oldChild.value !== newChild.value) ||
       (oldChild.type === 'function' && oldChild.value !== newChild.value);
 
+    if (oldChild.key) {
+      oldKeyMap.delete(oldChild.key);
+    }
+
     if (needsReplacement) {
-      replaceVNode(oldChild, newChild);
+      const newElement = render(newChild);
+      parentDOM.replaceChild(newElement, parentDOM.childNodes[i]);
+
       oldChildren[i] = newChild;
       continue;
     }
-
-    diff(oldChild, newChild);
+    diff(
+      oldChild,
+      newChild,
+      parentDOM.childNodes[i] as HTMLElement | Text,
+    );
   }
 
   for (let i = 0; i < removedCount; i++) {
+    parentDOM.removeChild(parentDOM.lastChild!);
     oldChildren.pop();
   }
 }
 
 /**
- * Diffs element props
+ * Updates the properties and attributes of a DOM element based on changes between old and new virtual nodes.
+ *
+ * @param oldNode - The previous virtual element node
+ * @param newNode - The new virtual element node to apply
+ * @param element - The actual DOM element to update
+ *
+ * Handles updates for:
+ * - Event listeners (with automatic cleanup via AbortController)
+ * - Class names
+ * - Style objects
+ * - Form element states (checked, value)
+ * - Standard HTML attributes
  */
 function diffProps(
   oldNode: VElement,
   newNode: VElement,
+  element: HTMLElement,
 ): void {
   const keys = new Set(
     Object.keys(oldNode.props).concat(Object.keys(newNode.props)),
   );
   oldNode.controller.abort();
   oldNode.controller = new AbortController();
+
   keys.forEach((key) => {
     const oldValue = oldNode.props[key];
     const newValue = newNode.props[key];
 
     if (key.startsWith('on')) {
       if (newValue) {
-        oldNode.domElement?.addEventListener(
+        element.addEventListener(
           key.slice(2).toLowerCase(),
           newValue,
           { signal: oldNode.controller.signal },
@@ -314,73 +436,56 @@ function diffProps(
     }
     if (key === 'className') {
       if (oldValue !== newValue) {
-        oldNode.domElement?.setAttribute('class', newValue);
+        element.setAttribute('class', newValue);
       }
       return;
     }
     if (key === 'style') {
       if (JSON.stringify(oldValue) !== JSON.stringify(newValue)) {
-        Object.assign(oldNode.domElement!.style, newValue);
+        Object.assign(element.style, newValue);
       }
       return;
     }
 
     if (oldValue !== newValue) {
       if (key === 'checked') {
-        (oldNode.domElement as HTMLInputElement).checked = newValue;
+        (element as HTMLInputElement).checked = newValue;
         return;
       }
       if (key === 'value') {
-        (oldNode.domElement as HTMLInputElement).value = newValue;
+        (element as HTMLInputElement).value = newValue;
         return;
       }
-      oldNode.domElement?.setAttribute(key, newValue);
+      element.setAttribute(key, newValue);
     }
   });
   oldNode.props = newNode.props;
 }
-/**
- * Removes a virtual node and its DOM elements
- */
-function removeVNode(vnode: VNode): void {
-  switch (vnode.type) {
-    case 'primitive':
-      vnode.domElement?.remove();
-      break;
-
-    case 'html':
-      vnode.domElement?.remove();
-      vnode.controller?.abort();
-
-      break;
-
-    case 'function':
-      if (vnode.topNode) {
-        removeVNode(vnode.topNode);
-      }
-      break;
-  }
-}
 
 /**
- * Replaces an old virtual node with a new one
+ * Swaps the positions of two child elements within a parent DOM element.
+ *
+ * @param parent - The parent DOM element containing the children to swap
+ * @param destination - The index of the first child element
+ * @param from - The index of the second child element
  */
-function replaceVNode(
-  oldNode: VNode,
-  newNode: VNode,
-): void {
-  const element = render(newNode);
-  switch (oldNode.type) {
-    case 'primitive': {
-      oldNode.domElement?.replaceWith(element);
-      break;
-    }
-    case 'html': {
-      oldNode.domElement?.replaceWith(element);
-      break;
-    }
-    case 'function': {
-      oldNode.topNode?.domElement?.replaceWith(element);
-    }
+function domChildSwap(
+  parent: HTMLElement,
+  destination: number,
+  from: number,
+) {
+  const fromElement = parent.childNodes[from];
+  const destinationElement = parent.childNodes[destination];
+
+  const fromNext = fromElement.nextSibling;
+  const destNext = destinationElement.nextSibling;
+
+  if (fromNext === destinationElement) {
+    parent.insertBefore(destinationElement, fromElement);
+  } else if (destNext === fromElement) {
+    parent.insertBefore(fromElement, destinationElement);
+  } else {
+    parent.insertBefore(fromElement, destNext);
+    parent.insertBefore(destinationElement, fromNext);
   }
 }
