@@ -13,6 +13,7 @@ import {
   VNode,
   VPrimitive,
 } from './core.ts';
+import { eventManager } from './event.ts';
 import { HTMLAttributes } from './html.ts';
 
 /**
@@ -32,7 +33,6 @@ export function render(
     case ('html'): {
       const element = document.createElement(node.value);
 
-      const signal = node.controller.signal;
       Object.entries(node.props).forEach(([key, value]) => {
         switch (key) {
           case 'style': {
@@ -54,7 +54,7 @@ export function render(
           default: {
             if (key.startsWith('on')) {
               const eventName = key.slice(2).toLowerCase();
-              element.addEventListener(eventName, value, { signal });
+              eventManager.addEventListener(element, eventName, value);
               break;
             }
             element.setAttribute(key, String(value));
@@ -154,7 +154,6 @@ function parseJSXToEldoraNode(
       value: type,
       children,
       props,
-      controller: new AbortController(),
       key,
     };
   }
@@ -417,37 +416,36 @@ function diffProps(
   const keys = new Set(
     Object.keys(oldNode.props).concat(Object.keys(newNode.props)),
   );
-  oldNode.controller.abort();
-  oldNode.controller = new AbortController();
 
+  eventManager.removeAllEventListenersForElement(element);
   keys.forEach((key) => {
     const oldValue = oldNode.props[key];
     const newValue = newNode.props[key];
-
-    if (key.startsWith('on')) {
-      if (newValue) {
-        element.addEventListener(
-          key.slice(2).toLowerCase(),
-          newValue,
-          { signal: oldNode.controller.signal },
-        );
-      }
+    if (!newValue) {
+      delete oldNode.props[key];
       return;
     }
-    if (key === 'className') {
-      if (oldValue !== newValue) {
-        element.setAttribute('class', newValue);
+    if (key.startsWith('on')) {
+      if (newValue) {
+        oldNode.props[key] = newValue;
+        eventManager.addEventListener(
+          element,
+          key.slice(2).toLowerCase(),
+          newValue,
+        );
       }
       return;
     }
     if (key === 'style') {
       if (JSON.stringify(oldValue) !== JSON.stringify(newValue)) {
+        oldNode.props[key] = newValue;
         Object.assign(element.style, newValue);
       }
       return;
     }
 
     if (oldValue !== newValue) {
+      oldNode.props[key] = newValue;
       if (key === 'checked') {
         (element as HTMLInputElement).checked = newValue;
         return;
@@ -456,10 +454,13 @@ function diffProps(
         (element as HTMLInputElement).value = newValue;
         return;
       }
+      if (key === 'className') {
+        element.setAttribute('class', newValue);
+        return;
+      }
       element.setAttribute(key, newValue);
     }
   });
-  oldNode.props = newNode.props;
 }
 
 /**
