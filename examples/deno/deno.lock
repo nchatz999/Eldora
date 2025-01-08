@@ -6,6 +6,7 @@
     "jsr:@nchatz999/eldora@~0.1.25": "0.1.25",
     "jsr:@nchatz999/eldora@~0.1.26": "0.1.26",
     "jsr:@nchatz999/eldora@~0.1.27": "0.1.27",
+    "jsr:@nchatz999/eldora@~0.1.28": "0.1.28",
     "jsr:@std/bytes@^1.0.2": "1.0.4",
     "jsr:@std/encoding@^1.0.5": "1.0.6",
     "jsr:@std/path@^1.0.6": "1.0.8"
@@ -30,6 +31,9 @@
     },
     "@nchatz999/eldora@0.1.27": {
       "integrity": "8d119e57d053d5a7c599f8cc1519891da1eccbb2598bc5f505e74c327ec4555c"
+    },
+    "@nchatz999/eldora@0.1.28": {
+      "integrity": "16fd06210e806e64cfda3dc50ebedc4daa1b005559ff09cc61112471ff768096"
     },
     "@std/bytes@1.0.4": {
       "integrity": "11a0debe522707c95c7b7ef89b478c13fb1583a7cfb9a85674cd2cc2e3a28abc"

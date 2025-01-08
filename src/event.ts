@@ -98,14 +98,17 @@ export class EventManager {
      */
     private handleEvent(event: Event): void {
         const { type, target } = event;
-
         const listenersForType = this.getListenersForType(type as string);
         if (listenersForType) {
-            const listenersForTarget = listenersForType.get(
-                target as HTMLElement,
-            );
-            if (listenersForTarget) {
-                listenersForTarget.forEach((listener) => listener(event));
+            let currentElement: HTMLElement | null = target as HTMLElement;
+            while (currentElement) {
+                const listenersForElement = listenersForType.get(
+                    currentElement,
+                );
+                if (listenersForElement) {
+                    listenersForElement.forEach((listener) => listener(event));
+                }
+                currentElement = currentElement.parentElement;
             }
         }
     }

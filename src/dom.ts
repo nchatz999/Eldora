@@ -61,9 +61,9 @@ export function render(
           }
         }
       });
-      node.children.forEach((child) => {
-        element.appendChild(render(child));
-      });
+      for (let i = 0; i < node.children.length; i++) {
+        element.appendChild(render(node.children[i]));
+      }
       return element;
     }
     case ('function'): {
@@ -295,11 +295,12 @@ function diffChildren(
   parentDOM: HTMLElement,
 ): void {
   if (oldChildren.length === 0) {
-    newChildren.forEach((child) => {
-      const newNode = render(child);
-      oldChildren.push(child);
+    for (let i = 0; i < newChildren.length; i++) {
+      const newNode = render(newChildren[i]);
+      oldChildren.push(newChildren[i]);
       parentDOM.appendChild(newNode);
-    });
+    }
+
     return;
   }
 
@@ -311,8 +312,19 @@ function diffChildren(
 
   const oldKeyMap = new Map<string, number>();
   const newKeyMap = new Map<string, number>();
-  oldChildren.forEach((child, i) => child.key && oldKeyMap.set(child.key, i));
-  newChildren.forEach((child, i) => child.key && newKeyMap.set(child.key, i));
+
+  for (let i = 0; i < oldChildren.length; i++) {
+    const child = oldChildren[i];
+    if (child.key) {
+      oldKeyMap.set(child.key, i);
+    }
+  }
+  for (let i = 0; i < newChildren.length; i++) {
+    const child = newChildren[i];
+    if (child.key) {
+      newKeyMap.set(child.key, i);
+    }
+  }
 
   for (let i = 0; i < oldChildren.length;) {
     const child = oldChildren[i];
@@ -423,17 +435,17 @@ function diffProps(
     const newValue = newNode.props[key];
     if (!newValue) {
       delete oldNode.props[key];
+      element.removeAttribute(key);
       return;
     }
     if (key.startsWith('on')) {
-      if (newValue) {
-        oldNode.props[key] = newValue;
-        eventManager.addEventListener(
-          element,
-          key.slice(2).toLowerCase(),
-          newValue,
-        );
-      }
+      oldNode.props[key] = newValue;
+      eventManager.addEventListener(
+        element,
+        key.slice(2).toLowerCase(),
+        newValue,
+      );
+
       return;
     }
     if (key === 'style') {

@@ -124,7 +124,9 @@ export class App<M, Msg> {
       this.container.replaceChildren(this.previousElement);
       return;
     }
+
     diff(this.previous, currentNode, this.previousElement);
+
     if (this.focusedElementId) {
       const element = document.getElementById(this.focusedElementId);
       if (element) {
